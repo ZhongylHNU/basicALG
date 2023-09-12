@@ -1,7 +1,7 @@
 # 算法基础课
 
 <!-- 一个史诗级算法学习巨作🤣 -->
-<!-- emo夏0营er -->
+<!-- emo的夏0营er -->
 
 **目录**
 
@@ -22,6 +22,12 @@
     - [2.7 Trie树](#27-trie树)
     - [2.8 并查集](#28-并查集)
     - [2.9 KMP](#29-kmp)
+    - [2.10](#210)
+  - [CH3 搜索与图论](#ch3-搜索与图论)
+    - [3.3 树与图的深度优先遍历](#33-树与图的深度优先遍历)
+    - [3.4 树与图的广度优先遍历](#34-树与图的广度优先遍历)
+    - [3.5 拓扑排序](#35-拓扑排序)
+    - [3.6 dijkstra 算法](#36-dijkstra-算法)
 
 ---
 
@@ -1242,6 +1248,266 @@ int main()
             j = nn[j];
         }
     }
+    return 0;
+}
+```
+
+### 2.10 
+
+## CH3 搜索与图论
+
+### 3.3 树与图的深度优先遍历
+
+主要是深度优先遍历的使用，需要注意的是使用一维数组表示临界表，下面是其经典代码：
+
+```cpp
+/*
+    important：
+        链表插入时采用头插的方式
+*/
+
+// 初始化
+int e[2 * C],           // 保存元素（值） 
+    ne[2 * C],          // 保存下一个元素的下标
+    h[2 * C],           // 保存第[下标]元素链表的第一个元素的下标
+    idx = 1;            // 自增的下标，在加入元素时起作用
+
+// 增加元素函数
+void add(int ss, int dd){
+    e[idx] = dd,        // 保存元素
+    ne[idx] = h[ss],    // 头插，将新元素作为头，原先的头作为当前元素的next
+    h[ss] = idx ++;     // 头指针，自增下标
+}
+```
+
+1. [846. 树的重心](https://www.acwing.com/problem/content/848/)
+
+我的解答：
+
+在第一次写代码时，忽略了与已访问节点的比较，考虑不完善！！！
+
+```cpp
+#include<iostream>
+
+using namespace std;
+
+const int C = 1e5 + 10;
+int e[2 * C], ne[2 * C], h[2 * C], idx = 1;
+int ans = C, n, aa, bb;
+bool flag[C];
+
+// 邻接表一维数组表示法
+void add(int ss, int dd){
+    e[idx] = dd, ne[idx] = h[ss], h[ss] = idx ++;
+}
+
+int dfs(int t){
+    flag[t] = true;
+    int cnt = 0, hh = h[t], mmax = 0;
+    while(hh != 0){
+        if(!flag[e[hh]]){
+            int tmp = dfs(e[hh]);
+            mmax = max(mmax, tmp);
+            cnt += tmp;
+        }
+        hh = ne[hh];
+    }
+    // 此处忘记处理max(mmax, n - 1 - cnt)
+    // ans = min(ans, n - 1 - cnt);
+    ans = min(ans, max(mmax, n - 1 - cnt));
+    return cnt + 1;
+}
+
+int main(){
+    scanf("%d", &n);
+    for(int i = 1; i < n; i ++) {
+        scanf("%d%d", &aa, &bb);
+        add(aa, bb);
+        add(bb, aa);
+    }
+    dfs(1);
+    printf("%d", ans);
+    return 0;
+}
+```
+
+### 3.4 树与图的广度优先遍历
+
+1. [AcWing 847. 图中点的层次](https://www.acwing.com/activity/content/problem/content/910/)
+
+使用`memset(dd, -1, sizeof dd)`比单独的数组使用数组记录是否访问更好更简洁，某名的bug老是不对
+
+我的解答：
+
+```cpp
+#include<iostream>
+#include<queue>
+#include<string.h>
+
+using namespace std;
+
+const int C = 1e5 + 10;
+int h[C], ne[C], e[C], idx = 1;
+int n, m, dd[C];
+
+void add(int a, int b){
+    e[idx] = b, ne[idx] = h[a], h[a] = idx ++;
+}
+
+int bfs(){
+    memset(dd, -1, sizeof dd);
+    queue<int> q;
+    q.push(1);
+    dd[1] = 0;
+    
+    while(!q.empty()){
+        int t = q.front();
+        q.pop();
+        for(int i = h[t]; i != 0; i = ne[i]){
+            int j = e[i];
+            if(dd[j] == -1){
+                dd[j] = dd[t] + 1;
+                q.push(j);
+            }
+        }
+    }
+    
+    return dd[n];
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    while(m --){
+        int a, b;
+        scanf("%d%d", &a, &b);
+        add(a, b);
+    }
+    printf("%d\n", bfs());
+    // for(int i = 1; i <= n; i ++)
+    //     printf("%d ", dd[i]);
+    return 0;
+}
+```
+
+### 3.5 拓扑排序
+
+类似于BFS
+
+```cpp
+#include<iostream>
+
+using namespace std;
+
+const int C = 1e5 + 10;
+int h[C], e[C], ne[C], idx = 1;
+int d[C], q[C], qt, qh, n, m;
+
+
+void add(int a, int b){
+    e[idx] = b, ne[idx] = h[a], h[a] = idx ++;
+}
+
+bool topsort(){
+    for(int i = 1; i <= n; i ++){
+        if(d[i] == 0){
+            q[qt ++] = i;
+        }
+    }
+    
+    while(qh <= qt){
+        for(int i = h[q[qh]]; i != 0; i = ne[i]){
+            d[e[i]] --;
+            if(d[e[i]] == 0) q[qt ++] = e[i];
+        }
+        qh ++;
+    }
+    
+    // printf("qt = %d\n", qt);
+    if(qt == n) return true;
+    return false;
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    while(m --){
+        int a, b;
+        scanf("%d%d", &a, &b);
+        add(a, b);
+        d[b] ++;
+    }
+    
+    if(topsort()){
+        for(int i = 0; i < n; i ++) printf("%d ", q[i]);
+    } else {
+        printf("-1\n");
+    }
+    return 0;
+}
+```
+
+### 3.6 dijkstra 算法
+
+使用优先队列优化的dijkstra 算法，时间复杂度为$O(mlog_2n)$,m为边数，n为节点数
+
+***debug***：需要注意使用stl时，会有冗余已经处理过点，需要跳过
+```cpp
+#include<iostream>
+#include<queue>
+#include<utility>
+#include<vector>
+#include<cstring>
+
+using namespace std;
+
+typedef pair<int, int> PII;
+
+const int C = 1e6 + 10;
+int e[C], ne[C], h[C], w[C], idx = 1;
+int n, m, x, y, z;
+int dis[C], st[C];
+priority_queue<PII, vector<PII>, greater<PII>> q;
+
+void add(int a, int b, int c){
+    e[idx] = b, w[idx] = c, ne[idx] = h[a], h[a] = idx ++;
+}
+
+int dijkstra(){
+    q.push({0, 1});
+    
+    while(q.size()){
+        PII tt = q.top();
+        q.pop();
+        // nn = 2, dd = 2
+        int nn= tt.second, dd = tt.first;
+        // 重复问题
+        if(st[nn]) continue;
+        st[nn] = 1, dis[nn] = dd;
+        for(int j = h[nn]; j != 0; j = ne[j]){
+            // printf("与%d相连的节点%d，权重为%d\n", nn, e[j], w[j]);
+            if(!st[e[j]] && dis[e[j]] > dd + w[j]){
+                dis[e[j]] = dd + w[j];
+                // printf("与%d相连的节点%d，权重为%d，距离小，开始调整至%d\n", nn, e[j], w[j], dis[e[j]]);
+                q.push({dis[e[j]], e[j]});
+            }
+        }
+    }
+    
+    // for(int i = 1; i <= n; i ++)
+    //     printf("%d ", dis[i]);
+    // printf("\n");
+    
+    if(dis[n] == 0x3f3f3f3f) return -1;
+    return dis[n];
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    memset(dis, 0x3f, sizeof dis);
+    for(int i = 0; i < m; i ++){
+        scanf("%d%d%d", &x, &y, &z);
+        add(x, y, z);
+    }
+    printf("%d", dijkstra());
     return 0;
 }
 ```
