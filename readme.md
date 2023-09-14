@@ -3,6 +3,13 @@
 <!-- 一个史诗级算法学习巨作🤣 -->
 <!-- emo的夏0营er -->
 
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
 **目录**
 
 - [算法基础课](#算法基础课)
@@ -28,6 +35,13 @@
     - [3.4 树与图的广度优先遍历](#34-树与图的广度优先遍历)
     - [3.5 拓扑排序](#35-拓扑排序)
     - [3.6 dijkstra 算法](#36-dijkstra-算法)
+    - [3.7 bellman-ford 算法](#37-bellman-ford-算法)
+    - [3.8 spfa算法](#38-spfa算法)
+    - [3.9 floyd 算法](#39-floyd-算法)
+    - [3.10 prim 算法](#310-prim-算法)
+    - [3.11 Kruskal算法](#311-kruskal算法)
+    - [3.12 染色法判定二分图](#312-染色法判定二分图)
+    - [3.13 匈牙利算法](#313-匈牙利算法)
 
 ---
 
@@ -1511,3 +1525,538 @@ int main(){
     return 0;
 }
 ```
+
+### 3.7 bellman-ford 算法
+
+判断k次是否可以到达n点，可以到达输出最小值
+
+遍历每个边，直至所有边都不再变化（松弛，最多n次，可以用来检查负权回路），计网距离矢量路由算法是其应用
+
+***debug***：防止路径条数超过k，应该使用更新前的距离，避免出现如下情况
+
+<div style="display: flex; justify-content: center; align-items: center;">
+  <img src="./imgs/bellman-ford.jpg" alt="Bellman-Ford">
+</div>
+
+```cpp
+#include<iostream>
+#include<cstring>
+
+using namespace std;
+
+const int N = 510, M = 10010;
+
+struct Edge{
+    int a, b, w;
+} edges[M];
+int n, m, k, x, y, z, dis[N], backup[N];
+
+int bellmanFord(){
+    while(k --){
+        // memmove(backup, dis, sizeof dis);
+        memcpy(backup, dis, sizeof dis);
+        for(int i = 0; i < m; i ++){
+            dis[edges[i].b] = min(dis[edges[i].b], backup[edges[i].a] + edges[i].w);
+        }
+    }
+    
+    // for(int i = 1; i <= n; i ++) printf("%d ", dis[i]);
+    // printf("\n");
+    
+    if(dis[n] >= 0x3f3f3f3f / 2) printf("impossible");
+    else printf("%d", dis[n]);
+    return 0;
+}
+
+int main(){
+    memset(dis, 0x3f, sizeof dis);
+    scanf("%d%d%d", &n, &m, &k);
+    for(int i = 0; i < m; i ++){
+        scanf("%d%d%d", &x, &y, &z);
+        edges[i] = {x, y, z};
+    }
+    dis[1] = 0;
+    bellmanFord();
+    return 0;
+}
+```
+
+### 3.8 spfa算法
+
+spfa算法是在bellman-ford算法基础上进行的优化，只对dis距离减小的点进行更新，减小复杂度
+
+算法复杂度为：最坏： $O(nm)$，一般： $O(m)$
+
+实现方式：使用队列保存dis减少的点，判断经过这个点dis是否减少，更新dis
+
+***debug***:当值减小时，直接更新dis，看点是否队列中，不在则加入，否则不加入
+
+1. [AcWing 851. spfa求最短路](https://www.acwing.com/problem/content/853/)
+
+```cpp
+#include<iostream>
+#include<queue>
+#include<cstring>
+
+using namespace std;
+
+const int C = 1e5 + 10;
+int h[C], e[C], w[C], ne[C], idx = 1;
+int m, n, x, y, z;
+int dis[C], st[C];
+
+void add(int a, int b, int c){
+    e[idx] = b, w[idx] = c, ne[idx] = h[a], h[a] = idx ++;
+}
+
+void spfa(){
+    memset(dis, 0x3f, sizeof dis);
+    
+    // 队列中保存距离变小的点，只需要更新这些点，某一点可以多次出入队列
+    queue<int> q;
+    q.push(1);
+    dis[1] = 0;
+    st[1] = 1;          // st用于描述点是否在队列中
+    
+    while(!q.empty()){
+        int t = q.front();
+        q.pop();
+        st[t] = 0;
+        
+        for(int i = h[t]; i != 0; i = ne[i]){
+            // 这里需要判断点是否在队列中嘛？
+            // 判断：使得节点唯一但会使dis最小嘛？，不判断：可以某时刻dis最小
+            // 重边->解决措施：若重边更小，直接更新dis
+            if(dis[e[i]] > dis[t] + w[i]){
+                dis[e[i]] = dis[t] + w[i];
+                if(!st[e[i]]){
+                    q.push(e[i]);
+                    st[e[i]] = 1;
+                }
+            }
+        }
+    }
+    
+    if(dis[n] > 0x3f3f3f3f / 2) printf("impossible");
+    else printf("%d", dis[n]);
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    for(int i = 0; i < m; i ++){
+        scanf("%d%d%d", &x, &y, &z);
+        add(x, y, z);
+    }
+    
+    spfa();
+    
+    return 0;
+}
+```
+
+2. [AcWing 852. spfa判断负环](https://www.acwing.com/problem/content/854/)
+
+在spfa的基础上修改：
+1. 不初始化dis数组，理由为：
+
+>假设有负环，那么负环上的点到虚拟源点0的距离一定是-INF对不对，因为我可以在负环上跑无限次，每次都能把我到0点的距离减小。然后因为边上的权值都是有限值，所以每次在负环上跑一圈就相当于dt[]减去一个有限值，最终dt[]==-INF，所以意味着会减无限次（简单明了的说就是我们在负环上跑无限次，就可以把我到0点的距离减成-INF）。重点来了，dt[]初值肯定是一个有限值，一个有限值每次减一个有限值（负环上跑一次），然后减无限次，最终dt[]减成-INF。即dt[]初值是多少都无所谓，因为会减无限次有限值，你再大的数减无限次有限值肯定减成-INF。我们只要用抽屉原理保证迭代超过n次的时候，说明路径上有起码n+1个点，说明有重复点，即有负环就行。所以我们甚至可以把判断条件改为cnt[j] > 99999都行，只要大于n。
+
+2. 初始时把所有节点加入队列，理由为：
+
+> 我们可以假设一个虚拟源点0点，从虚拟源点连一条权值是0的边到所有点，这样这个新图其实是和原图等价的（原图上有负环等价于新图上有负环），那我们做spfa的时候首先把0入队，第一次迭代的时候会把0出队，然后把和0点相连的点全部入队，那么就相当于把1-n的所有点入队，所有我们直接把所有点入队，效果是一样的，相当于自己手动迭代了一次spfa.
+
+3. 增加 cnt 数组，记录最短路经过的边数，当边`>= n`时，根据鸽笼原理，有重复点，因此存在负回路
+
+```cpp
+#include<iostream>
+#include<queue>
+
+using namespace std;
+
+const int C = 1e4 + 10, N = 2010;
+int e[C], w[C], ne[C], h[C], idx = 1;
+int n, m, x, y, z;
+int dis[N], st[N], cnt[N];
+
+void add(int a, int b, int c){
+    e[idx] = b, w[idx] = c, ne[idx] = h[a], h[a] = idx ++;
+}
+
+bool check(){
+    queue<int> q;
+    for(int i = 1; i <= n; i ++){
+        q.push(i);
+        st[i] = 1;
+    }
+    
+    while(!q.empty()){
+        int t = q.front();
+        q.pop();
+        st[t] = 0;
+        
+        for(int i = h[t]; i != 0; i = ne[i]){
+            if(dis[e[i]] > dis[t] + w[i]){
+                dis[e[i]] = dis[t] + w[i];
+                cnt[e[i]] = cnt[t] + 1;
+                if(cnt[e[i]] >= n) return true;
+                if(!st[e[i]]){
+                    q.push(e[i]);
+                    st[e[i]] = 1;
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    for(int i = 0; i < m; i ++){
+        scanf("%d%d%d", &x, &y, &z);
+        add(x, y, z);
+    }
+    
+    if(check())printf("Yes");
+    else printf("No");
+    
+    return 0;
+}
+```
+
+### 3.9 floyd 算法
+
+->动态规划<-
+
+三层循环，i,j,k:从i到j的距离，经过k是否减小
+
+1. [AcWing 854. Floyd求最短路](https://www.acwing.com/problem/content/856/)
+
+TODO：
+***debug:***最外层for循环的标志作为中转点，具体原因不太清楚
+
+```cpp
+#include<iostream>
+
+using namespace std;
+
+const int C = 210, INF = 1e9;
+int d[C][C], n, m, q;
+
+void floyd(){
+    // 最外层for循环标志作为中转点
+    for(int i = 1; i <= n; i ++){
+        for(int j = 1; j <= n; j ++){
+            for(int k = 1; k <= n; k ++){
+                d[j][k] = d[j][k] > (d[j][i] + d[i][k]) ? (d[j][i] + d[i][k]) : d[j][k];
+                // d[i][j] = d[i][j] > d[i][k] + d[k][j] ? d[i][k] + d[k][j] : d[i][j];
+            }
+        }
+    }
+}
+
+void print(){
+    for(int i = 1; i <= n; i ++){
+        for(int j = 1; j <= n; j ++){
+            printf("%d\t", d[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+int main(){
+    scanf("%d%d%d", &n, &m, &q);
+    
+    for(int i = 1; i <= n; i ++){
+        for(int j = 1; j <= n; j ++){
+            if(i == j) d[i][j] = 0;
+            else d[i][j] = INF;
+        }
+    }
+    
+    for(int i = 0; i < m; i ++){
+        int a, b, c;
+        scanf("%d%d%d", &a, &b, &c);
+        d[a][b] = min(d[a][b], c);
+    }
+    
+    floyd();
+    print();
+    
+    while(q --){
+        int a, b;
+        scanf("%d%d", &a, &b);
+        if(d[a][b] > INF / 2) printf("impossible\n");
+        else printf("%d\n", d[a][b]);
+    }
+    
+    return 0;
+}
+```
+
+### 3.10 prim 算法
+
+prim算法是基于点的贪心算法，每次选取距离集合距离最小的点，需要注意代码实现：
+   
+   1. 可能是非连通图
+   2. 在负自环存在时，在更新dis时考虑后续对邻接矩阵的更新，可能会导致返回的最小生成树和变小
+
+1. (AcWing 858. Prim算法求最小生成树)[https://www.acwing.com/problem/content/860/]
+
+```cpp
+#include<iostream>
+#include<cstring>
+
+using namespace std;
+
+const int C = 510, INF = 0x3f3f3f3f;
+int g[C][C], dis[C], n, m, u, v, w;
+bool st[C];
+
+// debug info:考虑负自环的影响
+int prim(){
+    int res = 0;
+    for(int i = 1; i <= n; i ++){
+        // 选出距离集合最小的点
+        // 这个图可能是非连通图，因此需要每次选择一个，而非指定1在集合中
+        int t = -1;
+        for(int j = 1; j <= n; j ++){
+            if(!st[j] && (t == -1 || dis[t] >= dis[j])){
+                t = j;
+            }
+        }
+        
+        // 第一个被选中的点
+        if(i == 1) dis[t] = 0;
+        
+        // 非连通图
+        if(dis[t] == INF) return INF;
+        
+        st[t] = true;
+        // 若没有处理负自环，需要将这句放于更新之前，因为后面for循环会修改dis值
+        res += dis[t];
+        
+        for(int j = 1; j <= n; j ++){
+            dis[j] = min(g[t][j], dis[j]);
+        }
+    }
+    return res;
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    memset(g, 0x3f, sizeof g);
+    memset(dis, 0x3f, sizeof dis);
+    for(int i = 0; i < m; i ++){
+        scanf("%d%d%d", &u, &v, &w);
+        g[u][v] = g[v][u] = min(g[u][v], w);
+    }
+    // 消除自环
+    for(int i = 1; i <= n; i ++) g[i][i] = 0;
+    
+    int t = prim();
+    if(t == INF) printf("impossible");
+    else printf("%d", t);
+    
+    return 0;
+}
+```
+
+### 3.11 Kruskal算法
+
+以边为切入点，算法流程为：
+
+1. 定义边的结构体，重载小于符号
+2. 读入边，并排序
+3. 遍历每条边，直至有 $n - 1$ 条边加入集合
+   - 对于每条边，查找端点是否在一个集合中（使用并查集实现 $O(1)$ 复杂度）
+   - 如果不在一个集合中，将端点加入集合
+
+1. [AcWing 859. Kruskal算法求最小生成树](https://www.acwing.com/problem/content/861/)
+
+***debug***:注意并查集书写
+
+```cpp
+#include<iostream>
+#include<algorithm>
+
+using namespace std;
+
+const int C = 2e5 + 10;
+int n, m, u, v, w;
+int p[C];
+
+struct edge{
+    int a, b, w;
+    
+    bool operator<(const edge ee){
+        return w < ee.w;
+    }
+} edges[C];
+
+int find(int a){
+    if(p[a] != a) p[a] = find(p[a]);
+    return p[a];
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    for(int i = 0; i < m; i ++){
+        scanf("%d%d%d", &u, &v, &w);
+        edges[i] = {u, v, w};
+    }
+    
+    sort(edges, edges + m);
+    
+    for(int i = 0; i <= n; i ++) p[i] = i;
+    
+    int res = 0, cnt = 0;
+    for(int i = 0; i < m; i ++){
+        int a = edges[i].a, b = edges[i].b, c = edges[i].w;
+        int pa = find(a), pb = find(b);
+        if(pa != pb){
+            p[pa] = pb;
+            res += c, cnt ++;
+        }
+    }
+    
+    if(cnt != n - 1) printf("impossible");
+    else printf("%d", res);
+    
+    return 0;
+}
+```
+
+### 3.12 染色法判定二分图
+
+算法流程：
+对于所有点：
+
+   1. 若该点未被染色，则染上1号色，将相邻的其他点，染成2号色，判断是否成功，若不成功则返回失败并退出，对相邻点重复此步骤，直至将这个连通块染色完成
+   2. 若该点已被染色，则检查是否与想染的颜色一致，若不一致，则返回失败并退出
+
+1. [染色法判定二分图](https://www.acwing.com/problem/content/862/)
+
+```cpp
+#include<iostream>
+
+using namespace std;
+
+const int N = 1e5 + 10, M = 2e5 + 10;
+int e[M], ne[M], h[M], idx = 1;
+int n, m, color[N];
+
+void add(int a, int b){
+    e[idx] = b, ne[idx] = h[a], h[a] = idx ++;
+}
+
+bool dfs(int i, int c){
+    color[i] = c;
+    for(int j = h[i]; j != 0; j = ne[j]){
+        // 未着色
+        if(!color[e[j]]){
+            if(!dfs(e[j], 3 - c)) return false;
+        }
+        // 已着色
+        else{
+            if(color[e[j]] == c) return false;
+        }
+    }
+    
+    return true;
+}
+
+int main(){
+    scanf("%d%d", &n, &m);
+    for(int i = 1; i <= m; i ++){
+        int u, v;
+        scanf("%d%d", &u, &v);
+        add(u, v);
+        add(v, u);
+    }
+    
+    bool flag = true;
+    for(int i = 1; i <= n; i ++){
+        if(!color[i]){
+            if(!dfs(i, 1)){
+                flag = false;
+                break;
+            }
+        }
+    }
+    
+    if(!flag) printf("No");
+    else printf("Yes");
+    return 0;
+}
+```
+
+<!-- 还剩最后一题，加油💪，就要完成目标了 -->
+
+### 3.13 匈牙利算法
+
+算法流程（以男女匹配为例）：
+
+1. 遍历每个男生，
+   - 遍历他未遍历 & 所青睐的女生，若无男友，则选择他作为男友；若已有男友，则看之前男友是否有备选，若有备选，则女生选择这个男生作为男友，否则男生遍历下个女生，直至找到或者遍历完所有青睐的女生
+
+参见代码注解
+
+1. [二分图的最大匹配](https://www.acwing.com/problem/content/description/863/)
+
+***debug:***在使用邻接表时，把e[j]写成了ne[j]老是过不了，很难受
+
+```cpp
+#include<iostream>
+#include<cstring>
+
+using namespace std;
+
+const int N = 510, M = 1e5 + 10;
+int e[M], ne[M], h[N], idx = 1;
+int n1, n2, m, match[N];
+bool st[N];
+
+void add(int a, int b){
+    e[idx] = b, ne[idx] = h[a], h[a] = idx ++;
+}
+
+bool find(int nn){
+    for(int i = h[nn]; i != 0; i = ne[i]){
+        int mm = e[i];
+        if(!st[mm]){
+            st[mm] = true;
+            // 无男友 || 女生前男友可以找到备选，st告诉前男友为true的女生是我考虑过的或者考虑无果的
+            if(match[mm] == 0 || find(match[mm]))
+            {
+                match[mm] = nn;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int main(){
+    scanf("%d%d%d", &n1, &n2, &m);
+    for(int i = 0; i < m; i ++){
+        int u, v;
+        scanf("%d%d", &u, &v);
+        add(u, v);
+    }
+    
+    int res = 0;
+    for(int i = 1; i <= n1; i ++){
+        // st用于标记这个女生是否考虑过，需要标记让另一个人不要再选择这个女生
+        memset(st, 0, sizeof st);
+        if(find(i)) res ++;
+    }
+    
+    printf("%d", res);
+    return 0;
+}
+```
+
+<!-- CH3 收尾，昨天计划完成CH3的，但是有个bug没想清楚，所以今天收尾 -->
+
+<!-- 2023年9月14日：今天中山计院报名结束了，我也去联系了一个体系结构方向的老师，再amd就职过（职场经历丰富），方向我也很喜欢，但是感觉会被拒绝，希望可以过 -->
